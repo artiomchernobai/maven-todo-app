@@ -116,8 +116,14 @@ button:disabled { cursor: default; }
 .category-list { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
 .category-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 2px; }
 .category-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.category-dot { width: 8px; height: 8px; flex: none; border: 1px solid currentColor; border-radius: 50%; }
-.category-link[aria-pressed="true"] .category-dot { background: var(--accent); }
+.category-dot {
+    width: 9px;
+    height: 9px;
+    flex: none;
+    border: 1px solid #728078;
+    border-radius: 50%;
+    background: var(--category-color, transparent);
+}
 .sidebar-note { margin: 7px 10px; color: #bdd0c4; font-size: 13px; }
 
 .api-link {
@@ -251,6 +257,35 @@ h2 { min-width: 0; overflow-wrap: anywhere; font-size: 22px; letter-spacing: -0.
     padding: 0 22px 19px;
 }
 
+.task-controls {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 0 22px 19px;
+}
+
+.quick-dates { display: flex; flex-wrap: wrap; gap: 7px; }
+.quick-dates button {
+    min-height: 34px;
+    padding: 5px 10px;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    color: var(--green);
+    background: #fff;
+    font-size: 13px;
+    font-weight: 650;
+}
+.quick-dates button:hover { background: #edf3ec; }
+.quick-dates button[aria-pressed="true"] {
+    border-color: var(--green);
+    background: var(--green);
+    color: #fff;
+}
+.sort-label { min-width: 150px; }
+.category-color-field input { width: 60px; padding: 4px; cursor: pointer; }
+
 label { display: grid; gap: 6px; min-width: 0; color: #42534a; font-size: 13px; font-weight: 650; }
 
 input, select, textarea {
@@ -281,7 +316,7 @@ tbody tr:hover { background: #fbfcfa; }
 .task-name { width: 100%; overflow-wrap: anywhere; }
 .task-title { font-weight: 700; }
 .task-category, .task-description, .task-date { color: var(--muted); }
-.task-category { display: block; margin-top: 3px; font-size: 12px; }
+.task-category { display: flex; align-items: center; gap: 6px; margin-top: 3px; font-size: 12px; }
 .task-description { margin-top: 7px; font-size: 13px; white-space: pre-line; }
 .task-date { white-space: nowrap; }
 
@@ -404,7 +439,7 @@ dialog::backdrop { background: #142a246e; }
     .main { padding: 24px 14px 30px; }
     .summary { margin-block: 20px; gap: 9px; }
     .stat { min-height: 85px; }
-    .panel-header, .filters { padding-inline: 13px; }
+    .panel-header, .filters, .task-controls { padding-inline: 13px; }
     .empty-state { min-height: 235px; padding-block: 29px; }
     table, tbody { display: block; min-width: 0; }
     thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }

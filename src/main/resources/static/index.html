@@ -66,6 +66,20 @@
                     </label>
                     <button class="button text-button" id="reset-filters" type="button" disabled>Сбросить</button>
                 </form>
+                <div class="task-controls">
+                    <div class="quick-dates" id="quick-dates" role="group" aria-label="Быстрые фильтры по срокам">
+                        <button type="button" data-range="today" aria-pressed="false">Сегодня</button>
+                        <button type="button" data-range="week" aria-pressed="false">На этой неделе</button>
+                        <button type="button" data-range="overdue" aria-pressed="false">Просрочено</button>
+                    </div>
+                    <label class="sort-label" for="task-sort">Сортировка
+                        <select id="task-sort">
+                            <option value="recent">Сначала новые</option>
+                            <option value="dueDate">По сроку</option>
+                            <option value="priority">По приоритету</option>
+                        </select>
+                    </label>
+                </div>
                 <div id="task-results" aria-busy="true">
                     <div class="table-wrap" id="table-wrap" hidden>
                         <table role="table">
@@ -129,6 +143,7 @@
                 <button class="icon-button" type="button" data-close aria-label="Закрыть">×</button>
             </header>
             <label>Название категории <input name="name" maxlength="100" required autofocus></label>
+            <label class="category-color-field">Цвет категории <input name="color" type="color"></label>
             <p class="form-error" role="alert" hidden></p>
             <footer class="dialog-actions">
                 <button class="button secondary" type="button" data-close>Отмена</button>
@@ -156,7 +171,7 @@
         <tr role="row">
             <td class="task-name" role="cell">
                 <div class="task-title"></div>
-                <span class="task-category"></span>
+                <span class="task-category"><span class="category-dot" aria-hidden="true"></span><span class="task-category-name"></span></span>
                 <p class="task-description"></p>
             </td>
             <td role="cell"><span class="task-status"></span></td>

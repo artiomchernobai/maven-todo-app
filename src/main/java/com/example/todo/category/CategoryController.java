@@ -2,6 +2,7 @@ package com.example.todo.category;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.net.URI;
 import java.util.List;
@@ -38,7 +39,7 @@ class CategoryController {
 
     @PostMapping
     ResponseEntity<CategoryResponse> create(@Valid @RequestBody CategoryRequest request) {
-        CategoryResponse category = categories.create(request.name());
+        CategoryResponse category = categories.create(request.name(), request.color());
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}").buildAndExpand(category.id()).toUri();
         return ResponseEntity.created(location).body(category);
@@ -46,7 +47,7 @@ class CategoryController {
 
     @PutMapping("/{id}")
     CategoryResponse update(@PathVariable long id, @Valid @RequestBody CategoryRequest request) {
-        return categories.update(id, request.name());
+        return categories.update(id, request.name(), request.color());
     }
 
     @DeleteMapping("/{id}")
@@ -55,6 +56,9 @@ class CategoryController {
         return ResponseEntity.noContent().build();
     }
 
-    record CategoryRequest(@NotBlank @Size(max = 100) String name) {
+    record CategoryRequest(
+            @NotBlank @Size(max = 100) String name,
+            @Pattern(regexp = "#[0-9a-fA-F]{6}", message = "must use the #RRGGBB format") String color
+    ) {
     }
 }

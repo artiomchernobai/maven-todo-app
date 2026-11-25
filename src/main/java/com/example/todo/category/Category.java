@@ -18,15 +18,21 @@ public class Category {
     @Column(nullable = false, unique = true, length = 100)
     private String name;
 
+    @Column(length = 7)
+    private String color;
+
     protected Category() {
     }
 
-    Category(String name) {
-        rename(name);
+    Category(String name, String color) {
+        update(name, color);
     }
 
-    void rename(String name) {
+    void update(String name, String color) {
         this.name = name.strip();
+        if (color != null) {
+            this.color = color;
+        }
     }
 
     public Long getId() {
@@ -35,5 +41,9 @@ public class Category {
 
     String getName() {
         return name;
+    }
+
+    String getColor() {
+        return color;
     }
 }
