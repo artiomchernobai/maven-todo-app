@@ -172,6 +172,37 @@ class TodoApiIntegrationTest {
         mvc.perform(patch("/api/tasks/1/complete")).andExpect(status().isNotFound());
     }
 
+    @Test
+    void storesCategoryColorsAndPreservesThemForNameOnlyUpdates() throws Exception {
+        long category = createCategory("School");
+        String url = "/api/categories/" + category;
+        mvc.perform(get(url))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.color").isEmpty());
+
+        mvc.perform(put(url).contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"School", "color":"#1A2b3C"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.color").value("#1A2b3C"));
+        mvc.perform(put(url).contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Courses"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.color").value("#1A2b3C"));
+        mvc.perform(put(url).contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Courses", "color":"#12345"}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.color").exists());
+        mvc.perform(get(url))
+                .andExpect(jsonPath("$.name").value("Courses"))
+                .andExpect(jsonPath("$.color").value("#1A2b3C"));
+    }
+
     private long createCategory(String name) throws Exception {
         MvcResult result = mvc.perform(post("/api/categories").contentType(MediaType.APPLICATION_JSON)
                         .content(json.createObjectNode().put("name", name).toString()))

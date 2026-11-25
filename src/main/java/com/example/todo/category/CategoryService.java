@@ -29,14 +29,14 @@ class CategoryService {
     }
 
     @Transactional
-    CategoryResponse create(String name) {
-        return save(new Category(name));
+    CategoryResponse create(String name, String color) {
+        return save(new Category(name, color));
     }
 
     @Transactional
-    CategoryResponse update(long id, String name) {
+    CategoryResponse update(long id, String name, String color) {
         Category category = find(id);
-        category.rename(name);
+        category.update(name, color);
         return save(category);
     }
 

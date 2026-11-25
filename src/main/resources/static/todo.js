@@ -5,6 +5,10 @@ const categoryForm = element("category-form");
 const deleteForm = element("delete-form");
 const statusLabels = { TODO: "К выполнению", IN_PROGRESS: "В работе", DONE: "Выполнено" };
 const priorityLabels = { LOW: "Низкий", MEDIUM: "Средний", HIGH: "Высокий" };
+const priorityRank = { LOW: 0, MEDIUM: 1, HIGH: 2 };
+const categoryPalette = ["#67a68a", "#d99a45", "#8d91c9", "#ce7988", "#53a1bc", "#a18d59"];
+const quickDateButtons = [...element("quick-dates").querySelectorAll("[data-range]")];
+const exactDate = filters.elements.namedItem("dueDate");
 const dateFormat = new Intl.DateTimeFormat("ru", { dateStyle: "medium", timeZone: "UTC" });
 const countFormat = new Intl.NumberFormat("ru");
 
@@ -12,6 +16,7 @@ let categories = [];
 let allTasks = [];
 let hasLoaded = false;
 let selectedCategory = "";
+let dueRange = "";
 let filterRequest;
 let refreshVersion = 0;
 let emptyAction;
@@ -38,7 +43,7 @@ async function api(path, { method = "GET", body, signal } = {}) {
         if (problem.errors) {
             const fields = {
                 title: "Название", name: "Название категории", categoryId: "Категория",
-                priority: "Приоритет", description: "Описание",
+                priority: "Приоритет", description: "Описание", color: "Цвет категории",
             };
             detail = Object.entries(problem.errors)
                 .map(([field, message]) => `${fields[field] ?? field}: ${message}`)
@@ -57,12 +62,17 @@ function notice(message, kind = "success") {
     banner.hidden = false;
 }
 
+function categoryColor(category) {
+    return category.color ?? categoryPalette[(category.id - 1) % categoryPalette.length];
+}
+
 function updateSidebar() {
     const rows = categories.map((category) => {
         const row = element("category-row").content.firstElementChild.cloneNode(true);
         const link = row.querySelector(".category-link");
         link.dataset.categoryId = category.id;
         link.title = category.name;
+        row.querySelector(".category-dot").style.setProperty("--category-color", categoryColor(category));
         row.querySelector(".category-name").textContent = category.name;
         link.addEventListener("click", () => selectCategory(String(category.id)));
 
@@ -132,8 +142,8 @@ function renderTasks(tasks, filtered) {
     counter.textContent = countFormat.format(tasks.length);
     counter.hidden = false;
 
-    const names = new Map(categories.map(({ id, name }) => [id, name]));
-    element("task-list").replaceChildren(...tasks.map((task) => taskRow(task, names)));
+    const categoriesById = new Map(categories.map((category) => [category.id, category]));
+    element("task-list").replaceChildren(...tasks.map((task) => taskRow(task, categoriesById)));
     element("table-wrap").hidden = tasks.length === 0;
     element("empty-state").hidden = tasks.length > 0;
 
@@ -147,10 +157,14 @@ function renderTasks(tasks, filtered) {
     }
 }
 
-function taskRow(task, names) {
+function taskRow(task, categoriesById) {
     const row = element("task-row").content.firstElementChild.cloneNode(true);
     row.querySelector(".task-title").textContent = task.title;
-    row.querySelector(".task-category").textContent = names.get(task.categoryId) ?? `Категория №${task.categoryId}`;
+    const category = categoriesById.get(task.categoryId);
+    row.querySelector(".task-category-name").textContent = category?.name ?? `Категория №${task.categoryId}`;
+    if (category) {
+        row.querySelector(".category-dot").style.setProperty("--category-color", categoryColor(category));
+    }
     const description = row.querySelector(".task-description");
     description.textContent = task.description ?? "";
     description.hidden = !task.description;
@@ -197,6 +211,53 @@ async function useButton(button, action) {
     }
 }
 
+function setDueRange(range) {
+    dueRange = range;
+    for (const button of quickDateButtons) {
+        button.setAttribute("aria-pressed", String(button.dataset.range === dueRange));
+    }
+}
+
+function localDateKey(date) {
+    return [date.getFullYear(), date.getMonth() + 1, date.getDate()]
+        .map((part, index) => String(part).padStart(index === 0 ? 4 : 2, "0"))
+        .join("-");
+}
+
+function filterByDueRange(tasks) {
+    if (!dueRange) return tasks;
+
+    const now = new Date();
+    const today = localDateKey(now);
+    if (dueRange === "today") return tasks.filter((task) => task.dueDate === today);
+    if (dueRange === "overdue") {
+        return tasks.filter((task) => task.dueDate && task.dueDate < today && task.status !== "DONE");
+    }
+
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - (now.getDay() + 6) % 7);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    const start = localDateKey(monday);
+    const end = localDateKey(sunday);
+    return tasks.filter((task) => task.dueDate && task.dueDate >= start && task.dueDate <= end);
+}
+
+function sortTasks(tasks) {
+    const sort = element("task-sort").value;
+    return [...tasks].sort((first, second) => {
+        if (sort === "dueDate") {
+            if (first.dueDate && !second.dueDate) return -1;
+            if (!first.dueDate && second.dueDate) return 1;
+            if (first.dueDate !== second.dueDate) return first.dueDate < second.dueDate ? -1 : 1;
+        }
+        if (sort === "priority" && first.priority !== second.priority) {
+            return priorityRank[second.priority] - priorityRank[first.priority];
+        }
+        return second.id - first.id;
+    });
+}
+
 async function loadTasks() {
     if (!hasLoaded) return;
     filterRequest?.abort();
@@ -209,12 +270,12 @@ async function loadTasks() {
     }
     if (selectedCategory) params.set("categoryId", selectedCategory);
 
-    const filtered = params.size > 0;
+    const filtered = params.size > 0 || Boolean(dueRange);
     element("reset-filters").disabled = !filtered;
     element("task-results").setAttribute("aria-busy", "true");
     try {
-        const tasks = filtered ? await api(`tasks?${params}`, { signal: request.signal }) : allTasks;
-        if (!request.signal.aborted) renderTasks(tasks, filtered);
+        const tasks = params.size ? await api(`tasks?${params}`, { signal: request.signal }) : allTasks;
+        if (!request.signal.aborted) renderTasks(sortTasks(filterByDueRange(tasks)), filtered);
     } catch (error) {
         if (!request.signal.aborted) showLoadError(error);
     } finally {
@@ -244,6 +305,7 @@ async function refresh() {
 
 function resetFilters() {
     filters.reset();
+    setDueRange("");
     selectCategory("");
 }
 
@@ -267,6 +329,9 @@ function openCategory(category) {
     categoryForm.reset();
     categoryForm.dataset.id = category?.id ?? "";
     categoryForm.elements.namedItem("name").value = category?.name ?? "";
+    categoryForm.elements.namedItem("color").value = category
+        ? categoryColor(category)
+        : categoryPalette[categories.length % categoryPalette.length];
     element("category-dialog-title").textContent = category ? "Редактирование категории" : "Новая категория";
     openDialog(categoryForm);
 }
@@ -336,9 +401,9 @@ configureDialog(categoryForm, async (data) => {
     const id = categoryForm.dataset.id;
     await api(id ? `categories/${id}` : "categories", {
         method: id ? "PUT" : "POST",
-        body: { name: data.get("name").trim() },
+        body: { name: data.get("name").trim(), color: data.get("color") },
     });
-    return id ? "Категория переименована." : "Категория создана.";
+    return id ? "Изменения категории сохранены." : "Категория создана.";
 });
 
 configureDialog(deleteForm, async () => {
@@ -352,6 +417,18 @@ element("add-category").addEventListener("click", () => openCategory());
 element("all-categories").addEventListener("click", () => selectCategory(""));
 element("empty-action").addEventListener("click", () => emptyAction?.());
 element("reset-filters").addEventListener("click", resetFilters);
-filters.addEventListener("change", () => void loadTasks());
+for (const button of quickDateButtons) {
+    button.addEventListener("click", () => {
+        const range = button.dataset.range;
+        setDueRange(dueRange === range ? "" : range);
+        if (dueRange) exactDate.value = "";
+        void loadTasks();
+    });
+}
+element("task-sort").addEventListener("change", () => void loadTasks());
+filters.addEventListener("change", (event) => {
+    if (event.target === exactDate && exactDate.value) setDueRange("");
+    void loadTasks();
+});
 filters.addEventListener("submit", (event) => event.preventDefault());
 void refresh();
