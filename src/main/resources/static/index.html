@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#142a24">
+    <title>ToDo — задачи</title>
+    <link rel="stylesheet" href="todo.css">
+    <script type="module" src="todo.js"></script>
+</head>
+<body>
+    <div class="workspace">
+        <aside class="sidebar" aria-label="Категории задач">
+            <div class="brand"><span class="brand-mark" aria-hidden="true">✓</span> ToDo</div>
+            <button class="category-link all-categories" id="all-categories" type="button" aria-pressed="true">
+                <span class="list-icon" aria-hidden="true"></span> Все задачи
+            </button>
+            <div class="sidebar-heading">
+                <h2>Категории</h2>
+                <button class="sidebar-add" id="add-category" type="button" aria-label="Новая категория" title="Новая категория">+</button>
+            </div>
+            <ul id="category-list" class="category-list"></ul>
+            <p id="no-categories" class="sidebar-note" hidden>Категории ещё не созданы</p>
+            <a class="api-link" href="api/tasks" target="_blank" rel="noopener">Открыть API задач <span class="external-arrow" aria-hidden="true"></span></a>
+        </aside>
+
+        <main class="main">
+            <header class="page-header">
+                <h1>Задачи</h1>
+                <button class="button primary" id="add-task" type="button" disabled><span aria-hidden="true">+</span> Новая задача</button>
+            </header>
+
+            <dl class="summary" aria-label="Задачи по статусам">
+                <div class="stat"><dt>Всего задач</dt><dd id="total-count">—</dd><span class="stat-icon total-icon" aria-hidden="true">≡</span></div>
+                <div class="stat"><dt>К выполнению</dt><dd id="todo-count">—</dd><span class="stat-icon todo-icon" aria-hidden="true">○</span></div>
+                <div class="stat"><dt>В работе</dt><dd id="progress-count">—</dd><span class="stat-icon progress-icon" aria-hidden="true">◷</span></div>
+                <div class="stat"><dt>Выполнено</dt><dd id="done-count">—</dd><span class="stat-icon done-icon" aria-hidden="true">✓</span></div>
+            </dl>
+
+            <p id="notice" class="notice" role="status" hidden></p>
+
+            <section class="task-panel" aria-labelledby="list-heading">
+                <div class="panel-header">
+                    <h2 id="list-heading">Все задачи</h2>
+                    <p id="visible-count" class="visible-count" aria-live="polite" hidden></p>
+                </div>
+                <form class="filters" id="filters" aria-label="Фильтры задач">
+                    <label>Статус
+                        <select name="status">
+                            <option value="">Все статусы</option>
+                            <option value="TODO">К выполнению</option>
+                            <option value="IN_PROGRESS">В работе</option>
+                            <option value="DONE">Выполнено</option>
+                        </select>
+                    </label>
+                    <label>Приоритет
+                        <select name="priority">
+                            <option value="">Все приоритеты</option>
+                            <option value="LOW">Низкий</option>
+                            <option value="MEDIUM">Средний</option>
+                            <option value="HIGH">Высокий</option>
+                        </select>
+                    </label>
+                    <label>Срок
+                        <input type="date" name="dueDate">
+                    </label>
+                    <button class="button text-button" id="reset-filters" type="button" disabled>Сбросить</button>
+                </form>
+                <div id="task-results" aria-busy="true">
+                    <div class="table-wrap" id="table-wrap" hidden>
+                        <table role="table">
+                            <thead>
+                                <tr><th scope="col">Задача</th><th scope="col">Статус</th><th scope="col">Приоритет</th><th scope="col">Срок</th><th scope="col">Действия</th></tr>
+                            </thead>
+                            <tbody id="task-list" role="rowgroup"></tbody>
+                        </table>
+                    </div>
+                    <div class="empty-state" id="empty-state">
+                        <div class="empty-icon" aria-hidden="true"><span>✓</span></div>
+                        <h3 id="empty-title">Загружаем задачи…</h3>
+                        <p id="empty-description" hidden></p>
+                        <button class="button secondary" id="empty-action" type="button" hidden></button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <dialog id="task-dialog" aria-labelledby="task-dialog-title">
+        <form id="task-form" class="dialog-form">
+            <header class="dialog-header">
+                <h2 id="task-dialog-title">Новая задача</h2>
+                <button class="icon-button" type="button" data-close aria-label="Закрыть">×</button>
+            </header>
+            <label>Название <input name="title" maxlength="160" required autofocus></label>
+            <label>Описание <textarea name="description" rows="3" maxlength="2000"></textarea></label>
+            <div class="field-row">
+                <label>Категория <select name="categoryId" required></select></label>
+                <label>Срок <input name="dueDate" type="date"></label>
+            </div>
+            <div class="field-row">
+                <label>Статус
+                    <select name="status">
+                        <option value="TODO">К выполнению</option>
+                        <option value="IN_PROGRESS">В работе</option>
+                        <option value="DONE">Выполнено</option>
+                    </select>
+                </label>
+                <label>Приоритет
+                    <select name="priority">
+                        <option value="LOW">Низкий</option>
+                        <option value="MEDIUM" selected>Средний</option>
+                        <option value="HIGH">Высокий</option>
+                    </select>
+                </label>
+            </div>
+            <p class="form-error" role="alert" hidden></p>
+            <footer class="dialog-actions">
+                <button class="button secondary" type="button" data-close>Отмена</button>
+                <button class="button primary" type="submit">Сохранить</button>
+            </footer>
+        </form>
+    </dialog>
+
+    <dialog id="category-dialog" aria-labelledby="category-dialog-title">
+        <form id="category-form" class="dialog-form">
+            <header class="dialog-header">
+                <h2 id="category-dialog-title">Новая категория</h2>
+                <button class="icon-button" type="button" data-close aria-label="Закрыть">×</button>
+            </header>
+            <label>Название категории <input name="name" maxlength="100" required autofocus></label>
+            <p class="form-error" role="alert" hidden></p>
+            <footer class="dialog-actions">
+                <button class="button secondary" type="button" data-close>Отмена</button>
+                <button class="button primary" type="submit">Сохранить</button>
+            </footer>
+        </form>
+    </dialog>
+
+    <dialog id="delete-dialog" aria-labelledby="delete-title" aria-describedby="delete-description">
+        <form id="delete-form" class="dialog-form">
+            <header class="dialog-header">
+                <h2 id="delete-title"></h2>
+                <button class="icon-button" type="button" data-close aria-label="Закрыть">×</button>
+            </header>
+            <p id="delete-description"></p>
+            <p class="form-error" role="alert" hidden></p>
+            <footer class="dialog-actions">
+                <button class="button secondary" type="button" data-close autofocus>Отмена</button>
+                <button class="button danger" type="submit">Удалить</button>
+            </footer>
+        </form>
+    </dialog>
+
+    <template id="task-row">
+        <tr role="row">
+            <td class="task-name" role="cell">
+                <div class="task-title"></div>
+                <span class="task-category"></span>
+                <p class="task-description"></p>
+            </td>
+            <td role="cell"><span class="task-status"></span></td>
+            <td role="cell"><span class="task-priority"></span></td>
+            <td class="task-date" role="cell"></td>
+            <td role="cell">
+                <div class="row-actions">
+                    <button class="icon-button complete-task" type="button" title="Завершить задачу">✓</button>
+                    <button class="icon-button edit-task" type="button" title="Изменить задачу">✎</button>
+                    <button class="icon-button remove-task" type="button" title="Удалить задачу">×</button>
+                </div>
+            </td>
+        </tr>
+    </template>
+
+    <template id="category-row">
+        <li class="category-row">
+            <button class="category-link" type="button" aria-pressed="false"><span class="category-dot" aria-hidden="true"></span><span class="category-name"></span></button>
+            <button class="sidebar-icon edit-category" type="button" title="Изменить категорию">✎</button>
+            <button class="sidebar-icon remove-category" type="button" title="Удалить категорию">×</button>
+        </li>
+    </template>
+</body>
+</html>
